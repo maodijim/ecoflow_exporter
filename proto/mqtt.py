@@ -12,6 +12,7 @@ import proto.Common_pb2 as Common_pb2
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 
+# Define a custom argparse action to set the default value of an argument from environment variable
 class EnvDefault(argparse.Action):
     def __init__(self, envvar, required=True, default=None, **kwargs):
         if envvar:
@@ -27,7 +28,6 @@ class EnvDefault(argparse.Action):
 
 
 def parse_protobuf_msg(payload):
-    
     dpu = pr705_pb2.DisplayPropertyUpload()
     header = Common_pb2.Send_Header_Msg()
     numRead = header.ParseFromString(payload)
@@ -51,6 +51,7 @@ def on_message(client, userdata, message):
         logging.info(f"Received message: {message.payload.decode()} on topic {message.topic}")
     except Exception as e:
         logging.error(f"Error decoding message: {e}")
+        # try to decode with protobuf
         parse_protobuf_msg(message.payload)
     logging.info(f"Saving message to file")
     with open("message.txt", "wb") as file:
