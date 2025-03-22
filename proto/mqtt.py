@@ -20,7 +20,7 @@ class EnvDefault(argparse.Action):
                 default = os.environ[envvar]
         if required and default:
             required = False
-        super(EnvDefault, self).__init__(default=default, required=required, 
+        super(EnvDefault, self).__init__(default=default, required=required,
                                          **kwargs)
 
     def __call__(self, parser, namespace, values, option_string=None):
@@ -39,7 +39,7 @@ def parse_protobuf_msg(payload):
             data = m.pdata
             try:
                 dpu.ParseFromString(data)
-                logging.info(f"DisplayPropertyUpload: {MessageToJson(dpu)}")
+                logging.info(f"Hex data: {data.hex()} ;DisplayPropertyUpload: {MessageToJson(dpu)}")
             except Exception as e:
                 logging.error(f"Error parsing DisplayPropertyUpload: {e}; hex data: {data.hex()}")
 
@@ -58,7 +58,29 @@ def on_message(client, userdata, message):
         file.write(message.payload)
     logging.info(f"Message QoS: {message.qos}")
     logging.info(f"Message retain flag: {message.retain}")
+    client.unsubscribe(reply_topic)
+    client.disconnect()
+    exit(0)
 
+
+def buildGetBody():
+    header_msg = Common_pb2.Send_Header_Msg()
+    header_msg.msg.add()
+    setattr(header_msg.msg[0], "from", "Android")
+    header_msg.msg[0].seq = seq
+    return header_msg.SerializeToString()
+
+def publishGetMsg():
+    global seq
+    get_msg = buildGetBody()
+    client.publish(
+        topic=get_topic,
+        payload=get_msg,
+        qos=0,
+        retain=False,
+    )
+    seq += 1
+    logging.info(f"Published message: {get_msg.hex()} to topic {get_topic}")
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--username", action=EnvDefault, envvar="MQTT_USERNAME", help="MQTT username")
@@ -90,8 +112,10 @@ if not args.account_id:
 # Define the MQTT broker details
 broker = args.broker
 port = args.port
-start_topic = f"/app/{args.account_id}/{args.device_id}/thing/property/get_reply"
+get_topic = f"/app/{args.account_id}/{args.device_id}/thing/property/get"
+reply_topic = f"/app/{args.account_id}/{args.device_id}/thing/property/get_reply"
 metric_topic = f"/app/device/property/{args.device_id}"
+seq = 1
 
 # Create an MQTT client instance
 client = mqtt.Client(
@@ -118,7 +142,9 @@ client.enable_logger()
 client.connect(broker, port)
 
 # Subscribe to the topic
-client.subscribe(metric_topic, qos=0)
+client.subscribe(reply_topic, qos=0)
+
+publishGetMsg()
 
 # Start the MQTT client loop to process network traffic and dispatch callbacks
 client.loop_forever()
