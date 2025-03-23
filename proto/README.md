@@ -18,7 +18,7 @@ python mqtt.py --read-local message.txt
 # Try realtime deserialization via MQTT
 ```bash
 export DEVICE_ID=<your ecoflow device id/serial number>
-export ACCOUNT_ID=<your ecoflow account id>
+export ACCOUNT_ID=<your ecoflow account id, same as the userId field from https://api.ecoflow.com/auth/login response>
 export MQTT_USERNAME=<your ecoflow mqtt username>
 export MQTT_PASSWORD=<your ecoflow mqtt password>
 
